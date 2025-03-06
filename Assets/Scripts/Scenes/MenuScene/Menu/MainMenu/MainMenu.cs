@@ -1,15 +1,22 @@
+using System;
 using System.Collections;
 using System.Collections.Generic;
 using UnityEngine;
 using TMPro;
 using Unity.Services.Authentication;
 using UnityEngine.UI;
+using Unity.Services.Friends;
 
 public class MainMenu : Panel
 {
     [SerializeField] public TextMeshProUGUI nameText = null;
     [SerializeField] private Button logoutButton = null;
 	[SerializeField] private Button leaderboardsButton = null;
+	[SerializeField] private Button friendsButton = null;
+	[SerializeField] private Button renameButton = null;
+	[SerializeField] private Button customizationButton = null;
+
+	private bool isFriendsServiceInitialized = false;
 
 	public override void Initialize()
 	{
@@ -17,18 +24,55 @@ public class MainMenu : Panel
 
 		logoutButton.onClick.AddListener(SignOut);
 		leaderboardsButton.onClick.AddListener(Leaderboards);
+		friendsButton.onClick.AddListener(Friends);
+		renameButton.onClick.AddListener(RenamePlayer);
+		customizationButton.onClick.AddListener(Customization);
 		base.Initialize();
 	}
 
 	public override void Open()
 	{
+		friendsButton.interactable = isFriendsServiceInitialized;
 		UpdatePlayerNameUI();
+		if(isFriendsServiceInitialized == false) 
+		{ 
+			InitializeFriendsServiceAsync(); 
+		}
 		base.Open();
+	}
+
+	private void Customization()
+	{
+		PanelManager.Open("customization");
+	}
+
+	private async void InitializeFriendsServiceAsync()
+	{
+		try
+		{
+			await FriendsService.Instance.InitializeAsync();
+			isFriendsServiceInitialized = true;
+			friendsButton.interactable = true;
+		}
+		catch (Exception exception)
+		{
+			Debug.Log(exception.Message);
+		}
 	}
 
 	private void SignOut()
 	{
-		MenuManager.Singleton.SignOut();
+		ActionConfirmMenu panel = (ActionConfirmMenu)PanelManager.GetSingleton("action_confirm");
+		panel.Open(SignOutResult, "Are you sure that you want to sign out?.", "Yes", "No");
+	}
+
+	private void SignOutResult(ActionConfirmMenu.Result result)
+	{
+		if (result == ActionConfirmMenu.Result.Positive)
+		{
+			MenuManager.Singleton.SignOut();
+			isFriendsServiceInitialized = false;
+		}
 	}
 
 	private void UpdatePlayerNameUI()
@@ -39,5 +83,34 @@ public class MainMenu : Panel
 	private void Leaderboards()
 	{
 		PanelManager.Open("leaderboards");
+	}
+
+	private void Friends()
+	{
+		PanelManager.Open("friends");
+	}
+
+	private void RenamePlayer()
+	{
+		GetInputMenu panel = (GetInputMenu)PanelManager.GetSingleton("input");
+		panel.Open(RenamePlayerConfirm, GetInputMenu.Type.String, 20, "Enter a name for your account.", "Sand", "Cancel");
+	}
+
+	private async void RenamePlayerConfirm(string input)
+	{
+		renameButton.interactable = false;
+
+		try
+		{
+			await AuthenticationService.Instance.UpdatePlayerNameAsync(input);
+			UpdatePlayerNameUI();
+		}
+		catch
+		{
+			ErrorMenu panel = (ErrorMenu)PanelManager.GetSingleton("error");
+			panel.Open(ErrorMenu.Action.None, "Failed to change the account name.", "OK");
+		}
+
+		renameButton.interactable = true;
 	}
 }

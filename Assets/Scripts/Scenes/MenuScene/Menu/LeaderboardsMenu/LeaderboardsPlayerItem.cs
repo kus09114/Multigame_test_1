@@ -29,6 +29,7 @@ public class LeaderboardsPlayerItem : MonoBehaviour
 
     private void Clicked()
     {
-        Debug.Log("TODO -> Open profile: " + player.PlayerName);
+        PlayerProfileMenu panel = (PlayerProfileMenu)PanelManager.GetSingleton("player_profile");
+        panel.Open(player.PlayerId, player.PlayerName);
     }
 }
