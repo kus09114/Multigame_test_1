@@ -6,6 +6,9 @@ using TMPro;
 using Unity.Services.Authentication;
 using UnityEngine.UI;
 using Unity.Services.Friends;
+using Unity.Services.Lobbies;
+using Unity.Services.Lobbies.Models;
+using System.Linq;
 
 public class MainMenu : Panel
 {
@@ -14,9 +17,11 @@ public class MainMenu : Panel
 	[SerializeField] private Button leaderboardsButton = null;
 	[SerializeField] private Button friendsButton = null;
 	[SerializeField] private Button renameButton = null;
+	[SerializeField] private Button lobbyButton = null;
 	[SerializeField] private Button customizationButton = null;
 
 	private bool isFriendsServiceInitialized = false;
+	private List<string> joinedLobbyIds = new List<string>();
 
 	public override void Initialize()
 	{
@@ -26,6 +31,7 @@ public class MainMenu : Panel
 		leaderboardsButton.onClick.AddListener(Leaderboards);
 		friendsButton.onClick.AddListener(Friends);
 		renameButton.onClick.AddListener(RenamePlayer);
+		lobbyButton.onClick.AddListener(Lobby);
 		customizationButton.onClick.AddListener(Customization);
 		base.Initialize();
 	}
@@ -39,6 +45,46 @@ public class MainMenu : Panel
 			InitializeFriendsServiceAsync(); 
 		}
 		base.Open();
+	}
+
+	private async void Lobby()
+	{
+		PanelManager.Open("loading");
+		try
+		{
+			var lobbyIds = await LobbyService.Instance.GetJoinedLobbiesAsync();
+			joinedLobbyIds = lobbyIds;
+		}
+		catch (Exception exception)
+		{
+			Debug.Log(exception.Message);
+		}
+
+		Lobby lobby = null;	
+
+		if (joinedLobbyIds.Count > 0)
+		{
+			try
+			{
+				lobby = await LobbyService.Instance.GetLobbyAsync(joinedLobbyIds.Last());
+			}
+			catch (Exception exception)
+			{
+				Debug.Log(exception.Message);
+			}
+		}
+
+		if(lobby != null)
+		{
+			LobbyMenu panel = (LobbyMenu)PanelManager.GetSingleton("lobby");
+			panel.Open(lobby);
+		}
+		else
+		{
+			PanelManager.Open("lobby_search");
+		}
+
+		PanelManager.Close("loading");
 	}
 
 	private void Customization()
